@@ -25,3 +25,19 @@ Datasets will be uploaded soon.
 ## Visualize results
 
 - [ ] fill
+
+
+## File Descriptions
+
+| File                   | Description                                      |
+| -                      | -                                                |
+| analysis               | scripts to perform analyses                      |
+| datasets.py            | dataset loading                                  |
+| experiments            | scripts to reproduce experiments                 |
+| models                 | GNN implementations                              |
+| README.md              | this file                                        |
+| requirements.txt       | dependencies                                     |
+| run_experiment.py      | main entry point for running a single experiment |
+| tabularize_ecml2020.py | reproduce results table from ECML2020 submission |
+| tabularize.py          | aggregate results into table                     |
+| visualize.py           | visualize results                                |
