@@ -14,18 +14,24 @@ Paper: under review at ECML 2020
 
 ## Get the datasets
 
-Datasets will be uploaded soon.
+The three datasets of our paper are available [on zenodo](https://zenodo.org/deposit/3764770).
+Download the zip files and put them into the `data` subdirectory:
 
-- [ ] Upload datasets to figshare.
+- `data/dblp-easy`
+- `data/dblp-hard`
+- `data/pharmabio`
 
 ## Run an experiment
 
-- [ ] fill
+```
+python3 run_experiment 
+```
 
 ## Visualize results
 
-- [ ] fill
-
+```
+python3
+```
 
 ## File Descriptions
 
