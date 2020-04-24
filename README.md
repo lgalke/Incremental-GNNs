@@ -21,17 +21,31 @@ Download the zip files and put them into the `data` subdirectory:
 - `data/dblp-hard`
 - `data/pharmabio`
 
-## Run an experiment
+## Example call to run an experiment
+
+The following exemplary command will run an experiment with a GraphSAGE model (1 hidden layer with 32 hidden units) on the `dblp-easy` dataset starting evaluation at year 2003 while using 200 annual epochs.
 
 ```
-python3 run_experiment 
+python3 run_experiment.py --seed 42 --model gs-mean --n_hidden 32 --start cold --lr "0.005" --history 3 --n-layers 1 --weight_decay 0 --dropout 0.5 --rescale_lr 1.0 --initial_epochs 0 --annual_epochs 200 --dataset "dblp-easy" --t_start 2003  --save "results.csv"                       
 ```
+
+The results.csv file can be reused for multiple runs (e.g. with different seeds, different models, different datasets), the script appends new results to the file.
+Consult `python3 run_experiment.py -h` for more information.
+
 
 ## Visualize results
 
+You can visualize with the `visualize.py` script:
+
 ```
-python3
+python3 visualize.py --style "window size %RF" --hue model --col dataset --row start --nosharey --save plot.png results.csv
 ```
+
+where results.csv is the file where you previously aggregated results. You can also provide multiple results files, then they will be concatenated before plotting.
+
+## Full reproduction of the paper's experiments
+
+In the `experiments/` directory, you find bash scripts to re-run all of our experiments (this may take a while).
 
 ## File Descriptions
 

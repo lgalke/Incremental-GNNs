@@ -32,8 +32,11 @@ for SEED in 1 2 3 4 5 6 7 8 9 10; do
   # HISTORY 25 
   python3 run_experiment.py --seed "$SEED" --model mlp --n_hidden 64 --start cold --lr "0.005" --history 25 $ARGS $PRETRAIN_ARGS --dataset "$DATA" --save "$OUTFILE"
   python3 run_experiment.py --seed "$SEED" --model mlp --n_hidden 64 --start warm --lr "0.001" --history 25 $ARGS $PRETRAIN_ARGS --dataset "$DATA" --save "$OUTFILE"
+
+  # Next two lines may fail on 12GB GPUs, maybe need to run on CPU instead
   python3 run_experiment.py --seed "$SEED" --model gs-mean --n_hidden 32 --start cold --lr "0.01" --history 25 $ARGS $PRETRAIN_ARGS --dataset "$DATA" --save "$OUTFILE"
   python3 run_experiment.py --seed "$SEED" --model gs-mean --n_hidden 32 --start warm --lr "0.01" --history 25 $ARGS $PRETRAIN_ARGS --dataset "$DATA" --save "$OUTFILE"
+
   python3 run_experiment.py --seed "$SEED" --model gat --n_hidden 64 --start cold --lr "0.05" --history 25 $ARGS $PRETRAIN_ARGS --dataset "$DATA" --save "$OUTFILE"
   python3 run_experiment.py --seed "$SEED" --model gat --n_hidden 64 --start warm --lr "0.05" --history 25 $ARGS $PRETRAIN_ARGS --dataset "$DATA" --save "$OUTFILE"
 done
