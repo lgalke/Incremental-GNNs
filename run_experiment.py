@@ -118,13 +118,13 @@ def build_model(args, in_feats, n_hidden, n_classes, device, n_layers=1):
                     n_layers, F.relu, args.dropout).to(device)
     elif args.model == 'mostfrequent':
         model = MostFrequentClass()
-    elif args.model == 'egcn':
-        if n_layers != 2:
-            print("Warning, EGCN doesn't respect n_layers")
-        egcn_args = egcn_utils.Namespace({'feats_per_node': in_feats,
-                                          'layer_1_feats': n_hidden,
-                                          'layer_2_feats': n_classes})
-        model = EGCN(egcn_args, torch.nn.RReLU(), device=device, skipfeats=False)
+    # elif args.model == 'egcn':
+    #     if n_layers != 2:
+    #         print("Warning, EGCN doesn't respect n_layers")
+    #     egcn_args = egcn_utils.Namespace({'feats_per_node': in_feats,
+    #                                       'layer_1_feats': n_hidden,
+    #                                       'layer_2_feats': n_classes})
+    #     model = EGCN(egcn_args, torch.nn.RReLU(), device=device, skipfeats=False)
     elif args.model == 'gat':
         print("Warning, GAT doesn't respect n_layers")
         heads = [8, args.gat_out_heads]  # Fixed head config
@@ -300,7 +300,8 @@ def main(args):
             acc, _ = evaluate(model, subg, subg_features, subg_labels, mask=None)
             print(f"** Train Accuracy {acc:.4f} **")
 
-        known_classes |= set(subg_labels.numpy())
+        known_classes |= set(subg_labels.cpu().numpy())
+        print("Known classes:", known_classes)
 
     remaining_years = torch.unique(years[years > args.pretrain_until], sorted=True)
 
@@ -329,7 +330,7 @@ def main(args):
         else:
             epochs = args.annual_epochs
 
-        new_classes = set(subg_labels[train_nid].numpy()) - known_classes
+        new_classes = set(subg_labels[train_nid].cpu().numpy()) - known_classes
 
         if args.start == 'legacy-cold':
             # Brute force re-init of model
@@ -347,11 +348,12 @@ def main(args):
             pass
         elif args.start == 'warm':
             if new_classes and has_parameters:
+                print("Doing partial warm reinit")
                 # If there are new classes:
                 # 1) Save parameters of final layer
                 # 2) Reinit parameters of final layer
                 # 3) Copy saved parameters to new final layer
-                known_class_ids = torch.tensor(list(known_classes))
+                known_class_ids = torch.LongTensor(list(known_classes))
                 saved_params = [p.data.clone() for p in model.final_parameters()]
                 model.reset_final_parameters()
                 for i, params in enumerate(model.final_parameters()):
@@ -365,6 +367,7 @@ def main(args):
             raise NotImplementedError("Unknown --start arg: '%s'"%args.start)
 
         known_classes |= new_classes
+        print("Known classes:", known_classes)
 
         if has_parameters:
             # Build a fresh optimizer in both cases: warm or cold
