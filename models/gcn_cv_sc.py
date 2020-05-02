@@ -95,6 +95,18 @@ class GCNSampling(nn.Module):
 
         return h
 
+    def reset_parameters(self):
+        self.linear.reset_parameters()
+        for layer in self.layers:
+            layer.linear.reset_parameters()
+
+    def reset_final_parameters(self):
+        self.layers[-1].linear.reset_parameters()
+
+    def final_parameters(self):
+        yield self.layers[-1].linear.weight
+        yield self.layers[-1].linear.bias
+
 
 class GCNInfer(nn.Module):
     def __init__(self,
@@ -138,7 +150,7 @@ class GCNInfer(nn.Module):
 
 
 def prepare_graph(g, features, n_layers, n_hidden):
-    """ 
+    """
     Arguments
     - graph: DGLGraph
     - features: torch.FloatTensor

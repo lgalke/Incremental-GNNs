@@ -192,6 +192,7 @@ def main(args):
     np.random.seed(args.seed)
     dataset = '70companies'
     use_sampling = args.model in ['gcn_cv_sc']
+    has_parameters = args.model not in ['most_frequent']
 
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
@@ -230,7 +231,7 @@ def main(args):
     print(model)
     num_params = sum(np.product(p.size()) for p in model.parameters())
     print("#params:", num_params)
-    if args.model != 'mostfrequent':
+    if has_parameters:
         optimizer = torch.optim.Adam(model.parameters(),
                                      lr=args.lr,
                                      weight_decay=args.weight_decay)
@@ -270,7 +271,6 @@ def main(args):
         exclude_class = None
 
     known_classes = set()
-    # TODO adjust known classes appropriately
 
     if not args.limited_pretraining and not args.start == 'cold' and args.initial_epochs > 0:
         # With 'limited pretraining' we do the initial epochs on the first wnidow
@@ -300,6 +300,7 @@ def main(args):
             acc, _ = evaluate(model, subg, subg_features, subg_labels, mask=None)
             print(f"** Train Accuracy {acc:.4f} **")
 
+        known_classes |= set(subg_labels.numpy())
 
     remaining_years = torch.unique(years[years > args.pretrain_until], sorted=True)
 
@@ -328,36 +329,87 @@ def main(args):
         else:
             epochs = args.annual_epochs
 
-        # Get a new optimizer with rescaled lr and wd
-        if args.start == 'cold':
-            del model
-            # Build a fresh model for a cold restart
-            model = build_model(args, in_feats, n_hidden, n_classes, device, n_layers=args.n_layers)
-            if args.model == 'gcn_cv_sc':
-                # unzip training and inference models
-                model, infer_model = model
+        new_classes = set(subg_labels[train_nid].numpy())
+
+        if args.start == 'cold' or (args.start == 'hybrid' and new_classes):
+            # OLD version
+            # del model
+            # # Build a fresh model for a cold restart
+            # model = build_model(args, in_feats, n_hidden, n_classes, device, n_layers=args.n_layers)
+            # if args.model == 'gcn_cv_sc':
+            #     # unzip training and inference models
+            #     model, infer_model = model
+            # NEW version
+            model.reset_parameters()
+        elif args.start == 'legacy-warm':
+            # Legacy warm start: just keep old params as is
+            # differs from new warm variant on unseen classes with cat. CE loss
+            pass
         elif args.start == 'warm':
-            model.
-        if args.model != 'mostfrequent':
+            if new_classes and has_parameters:
+                # If there are new classes:
+                # 1) Save parameters of final layer
+                # 2) Reinit parameters of final layer
+                # 3) Copy saved parameters to new final layer
+                known_class_ids = torch.tensor(list(known_classes))
+                saved_params = [p.data.clone() for p in model.final_parameters()]
+                model.reset_final_parameters()
+                for i, params in enumerate(model.final_parameters()):
+                    if params.dim() == 1:  # bias vector
+                        params.data[known_class_ids] = saved_params[i][known_class_ids]
+                    elif params.dim() == 2:  # weight matrix
+                        params.data[known_class_ids, :] = saved_params[i][known_class_ids, :]
+                    else:
+                        NotImplementedError("Parameter dim > 2 ?")
+        else:
+            raise NotImplementedError("Unknown --start arg: '%s'"%args.start)
+
+        if has_parameters:
             # Build a fresh optimizer in both cases: warm or cold
+            # Use rescaled lr and wd
             optimizer = torch.optim.Adam(model.parameters(),
                                          lr=args.lr * args.rescale_lr,
                                          weight_decay=args.weight_decay * args.rescale_wd)
         if use_sampling:
             if epochs > 0:
-                train_sampling(model, optimizer, F.cross_entropy, 1, subg, train_nid, subg_labels, epochs)
+                train_sampling(model,
+                               optimizer,
+                               F.cross_entropy,
+                               1,
+                               subg,
+                               train_nid,
+                               subg_labels,
+                               epochs)
                 copy_params(infer_model, model)
-            acc = evaluate_sampling(infer_model, subg, test_nid, labels, batch_size=args.test_batch_size, num_workers=args.num_workers)
+
+            acc = evaluate_sampling(infer_model,
+                                    subg,
+                                    test_nid,
+                                    labels,
+                                    batch_size=args.test_batch_size,
+                                    num_workers=args.num_workers)
         elif args.model == 'mostfrequent':
             if epochs > 0:
                 # Re-fit only if uptraining is in general allowed!
                 model.fit(None, subg_labels[train_nid])
-            acc, _ = evaluate(model, subg, subg_features, subg_labels, mask=test_nid, compute_loss=False)
+
+            acc, _ = evaluate(model,
+                              subg,
+                              subg_features,
+                              subg_labels,
+                              mask=test_nid,
+                              compute_loss=False)
         else:
             if epochs > 0:
                 train(model, optimizer, subg, subg_features, subg_labels, mask=train_nid, epochs=epochs,
                       weights=weights)
-            acc, _ = evaluate(model, subg, subg_features, subg_labels, mask=test_nid, compute_loss=False)
+
+            acc, _ = evaluate(model,
+                                subg,
+                                subg_features,
+                                subg_labels,
+                                mask=test_nid,
+                                compute_loss=False)
         print(f"[{current_year} ~ Epoch {epochs}] Test Accuracy: {acc:.4f}")
         results_df = attach_score(results_df, current_year, epochs, acc)
         # input() # debug purposes
@@ -422,7 +474,7 @@ if __name__ == '__main__':
     parser.add_argument('--decay', default=None, type=float, help="Paramater for exponential decay loss smoothing")
     parser.add_argument('--save_intermediate', default=False, action="store_true", help="Save intermediate results per year")
     parser.add_argument('--save', default=None, help="Save results to this file")
-    parser.add_argument('--start', default='warm', choices=['cold', 'warm'], help="Cold retrain from scratch or use warm start.")
+    parser.add_argument('--start', default='warm', choices=['cold', 'warm', 'hybrid', 'legacy-warm'], help="Cold retrain from scratch or use warm start.")
 
     ARGS = parser.parse_args()
 
@@ -452,6 +504,7 @@ if __name__ == '__main__':
         except KeyError:
             print("No default for dataset '{}'. Please provide '--t_start'.".format(ARGS.dataset))
             exit(1)
+
     # Backward compatibility:
     # current implementation actually uses 'pretrain_until'
     # as last timestep / year *BEFORE* t_start

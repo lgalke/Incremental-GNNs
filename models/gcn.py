@@ -36,3 +36,14 @@ class GCN(nn.Module):
                 h = self.dropout(h)
             h = layer(graph, h)
         return h
+
+    def reset_parameters(self):
+        for layer in self.layers:
+            layer.reset_parameters()
+
+    def reset_final_parameters(self):
+        self.layers[-1].reset_parameters()
+
+    def final_parameters(self):
+        yield self.layers[-1].fc.weight
+        yield self.layers[-1].fc.bias

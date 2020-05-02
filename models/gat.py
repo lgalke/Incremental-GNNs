@@ -51,3 +51,16 @@ class GAT(nn.Module):
         # output projection
         logits = self.gat_layers[-1](graph, h).mean(1)
         return logits
+
+    def reset_parameters(self):
+        for layer in self.gat_layers:
+            layer.reset_parameters()
+
+    def reset_final_parameters(self):
+        self.gat_layers[-1].reset_parameters()
+
+    def final_parameters(self):
+        yield self.gat_layers[-1].fc.weight
+        yield self.gat_layers[-1].fc.bias
+
+

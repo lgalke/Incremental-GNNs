@@ -157,6 +157,19 @@ class GIN(nn.Module):
         # else:
         #     raise NotImplementedError
 
+    def reset_parameters(self):
+        for layer in self.ginlayers:
+            layer.reset_parameters()
+        for bn in self.batch_norms:
+            bn.reset_parameters()
+        self.output_layer.reset_parameters()
+
+    def final_parameters(self):
+        yield self.output_layer.weight
+        yield self.output_layer.bias
+
+    def reset_final_parameters(self):
+        self.output_layer.reset_parameters()
 
     def forward(self, graph, h):
         # list of hidden representation at each layer (including input)

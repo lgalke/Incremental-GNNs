@@ -35,3 +35,18 @@ class GraphSAGE(nn.Module):
         for layer in self.layers:
             h = layer(graph, h)
         return h
+
+    def reset_parameters(self):
+        for layer in self.layers:
+            layer.reset_parameters()
+
+    def reset_final_parameters(self):
+        self.layers[-1].reset_parameters()
+
+    def final_parameters(self):
+        yield self.layers[-1].fc_self.weight
+        yield self.layers[-1].fc_self.bias
+        yield self.layers[-1].fc_neigh.weight
+        yield self.layers[-1].fc_neigh.bias
+
+

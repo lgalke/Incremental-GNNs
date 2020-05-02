@@ -26,3 +26,6 @@ class MostFrequentClass():
 
     def eval(self):
         pass
+
+    def reset_parameters(self):
+        pass
