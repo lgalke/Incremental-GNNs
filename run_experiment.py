@@ -18,10 +18,10 @@ from models import GAT
 from models import MLP
 from models import MostFrequentClass
 
-# EvolveGCN
-from models.evolvegcn.egcn_o import EGCN
-from models.evolvegcn.models import Classifier
-import models.evolvegcn.utils as egcn_utils
+# # EvolveGCN
+# from models.evolvegcn.egcn_o import EGCN
+# from models.evolvegcn.models import Classifier
+# import models.evolvegcn.utils as egcn_utils
 
 # GCN Sampling
 from models.gcn_cv_sc import GCNSampling, GCNInfer, train as train_sampling, copy_params, evaluate as evaluate_sampling, prepare_graph
@@ -331,10 +331,9 @@ def main(args):
 
         new_classes = set(subg_labels[train_nid].numpy()) - known_classes
 
-        if args.start ='legacy-cold':
+        if args.start == 'legacy-cold':
             # Brute force re-init of model
             del model
-            # Build a fresh model for a cold restart
             model = build_model(args, in_feats, n_hidden, n_classes, device, n_layers=args.n_layers)
             if args.model == 'gcn_cv_sc':
                 # unzip training and inference models
