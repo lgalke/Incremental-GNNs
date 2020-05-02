@@ -474,7 +474,7 @@ if __name__ == '__main__':
     parser.add_argument('--decay', default=None, type=float, help="Paramater for exponential decay loss smoothing")
     parser.add_argument('--save_intermediate', default=False, action="store_true", help="Save intermediate results per year")
     parser.add_argument('--save', default=None, help="Save results to this file")
-    parser.add_argument('--start', default='warm', choices=['cold', 'warm', 'hybrid', 'legacy-warm'], help="Cold retrain from scratch or use warm start.")
+    parser.add_argument('--start', default='legacy-warm', choices=['cold', 'warm', 'hybrid', 'legacy-warm'], help="Cold retrain from scratch or use warm start.")
 
     ARGS = parser.parse_args()
 
