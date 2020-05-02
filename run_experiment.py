@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*- 
+# -*- coding: utf-8 -*-
 import argparse
 import os
 import os.path as osp
@@ -268,7 +268,10 @@ def main(args):
         exclude_class = 0   # <-- this is the UNK class in the dataset
     else:
         exclude_class = None
-    
+
+    known_classes = set()
+    # TODO adjust known classes appropriately
+
     if not args.limited_pretraining and not args.start == 'cold' and args.initial_epochs > 0:
         # With 'limited pretraining' we do the initial epochs on the first wnidow
         # With cold start, no pretraining is needed
@@ -333,6 +336,8 @@ def main(args):
             if args.model == 'gcn_cv_sc':
                 # unzip training and inference models
                 model, infer_model = model
+        elif args.start == 'warm':
+            model.
         if args.model != 'mostfrequent':
             # Build a fresh optimizer in both cases: warm or cold
             optimizer = torch.optim.Adam(model.parameters(),
