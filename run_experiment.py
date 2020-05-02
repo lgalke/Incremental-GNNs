@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*- 
+# -*- coding: utf-8 -*-
 import argparse
 import os
 import os.path as osp
@@ -18,10 +18,10 @@ from models import GAT
 from models import MLP
 from models import MostFrequentClass
 
-# EvolveGCN
-from models.evolvegcn.egcn_o import EGCN
-from models.evolvegcn.models import Classifier
-import models.evolvegcn.utils as egcn_utils
+# # EvolveGCN
+# from models.evolvegcn.egcn_o import EGCN
+# from models.evolvegcn.models import Classifier
+# import models.evolvegcn.utils as egcn_utils
 
 # GCN Sampling
 from models.gcn_cv_sc import GCNSampling, GCNInfer, train as train_sampling, copy_params, evaluate as evaluate_sampling, prepare_graph
@@ -268,7 +268,7 @@ def main(args):
         exclude_class = 0   # <-- this is the UNK class in the dataset
     else:
         exclude_class = None
-    
+
     if not args.limited_pretraining and not args.start == 'cold' and args.initial_epochs > 0:
         # With 'limited pretraining' we do the initial epochs on the first wnidow
         # With cold start, no pretraining is needed
