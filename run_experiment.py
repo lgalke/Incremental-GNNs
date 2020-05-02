@@ -329,19 +329,20 @@ def main(args):
         else:
             epochs = args.annual_epochs
 
-        new_classes = set(subg_labels[train_nid].numpy())
+        new_classes = set(subg_labels[train_nid].numpy()) - known_classes
 
-        if args.start == 'cold' or (args.start == 'hybrid' and new_classes):
-            # OLD version
-            # del model
-            # # Build a fresh model for a cold restart
-            # model = build_model(args, in_feats, n_hidden, n_classes, device, n_layers=args.n_layers)
-            # if args.model == 'gcn_cv_sc':
-            #     # unzip training and inference models
-            #     model, infer_model = model
-            # NEW version
+        if args.start ='legacy-cold':
+            # Brute force re-init of model
+            del model
+            # Build a fresh model for a cold restart
+            model = build_model(args, in_feats, n_hidden, n_classes, device, n_layers=args.n_layers)
+            if args.model == 'gcn_cv_sc':
+                # unzip training and inference models
+                model, infer_model = model
+        elif args.start == 'cold' or (args.start == 'hybrid' and new_classes):
+            # NEW version, equivalent to legacy-cold, but more efficient
             model.reset_parameters()
-        elif args.start == 'legacy-warm':
+        elif args.start == 'legacy-warm' or (args.start == 'hybrid' and not new_classes):
             # Legacy warm start: just keep old params as is
             # differs from new warm variant on unseen classes with cat. CE loss
             pass
@@ -363,6 +364,8 @@ def main(args):
                         NotImplementedError("Parameter dim > 2 ?")
         else:
             raise NotImplementedError("Unknown --start arg: '%s'"%args.start)
+
+        known_classes |= new_classes
 
         if has_parameters:
             # Build a fresh optimizer in both cases: warm or cold
@@ -474,7 +477,7 @@ if __name__ == '__main__':
     parser.add_argument('--decay', default=None, type=float, help="Paramater for exponential decay loss smoothing")
     parser.add_argument('--save_intermediate', default=False, action="store_true", help="Save intermediate results per year")
     parser.add_argument('--save', default=None, help="Save results to this file")
-    parser.add_argument('--start', default='legacy-warm', choices=['cold', 'warm', 'hybrid', 'legacy-warm'], help="Cold retrain from scratch or use warm start.")
+    parser.add_argument('--start', default='legacy-warm', choices=['cold', 'warm', 'hybrid', 'legacy-cold','legacy-warm'], help="Cold retrain from scratch or use warm start.")
 
     ARGS = parser.parse_args()
 
