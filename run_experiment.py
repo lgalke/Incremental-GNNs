@@ -7,7 +7,7 @@ import os.path as osp
 import numpy as np
 import pandas as pd
 import dgl
-import dgl.function as fn
+import torch_geometric as tg
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -139,13 +139,19 @@ def build_model(args, in_feats, n_hidden, n_classes, device, n_layers=1):
     return model
 
 def prepare_data_for_year(graph, features, labels, years, current_year, history, exclude_class=None,
-                          device=None):
+                          device=None, backend='dgl'):
     print("Preparing data for year", current_year)
     # Prepare subgraph
     subg_nodes = torch.arange(graph.number_of_nodes())[(years <= current_year) & (years >= (current_year - history))]
 
-    subg = graph.subgraph(subg_nodes)
-    subg.set_n_initializer(dgl.init.zero_initializer)
+    if backend == 'dgl':
+        subg = graph.subgraph(subg_nodes)
+        subg.set_n_initializer(dgl.init.zero_initializer)
+    elif backend == 'geometric':
+        subg = tg.utils.subgraph(subg_nodes, graph, relabel_nodes=True)
+    else:
+        raise ValueError("Unkown backend: " + backend)
+
     subg_features = features[subg_nodes]
     subg_labels = labels[subg_nodes]
     subg_years = years[subg_nodes]
@@ -193,6 +199,7 @@ def main(args):
     dataset = '70companies'
     use_sampling = args.model in ['gcn_cv_sc']
     has_parameters = args.model not in ['most_frequent']
+    backend = 'geometric' if args.model in ['gunet'] else 'dgl'
 
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
@@ -201,14 +208,13 @@ def main(args):
         device = torch.device("cpu")
 
 
-    graph, features, labels, years = load_data(args.data_path)
+    graph, features, labels, years = load_data(args.data_path, backend=backend)
 
     print("Min year:", years.min())
     print("Max year:", years.max())
     print("Number of nodes:", graph.number_of_nodes())
     print("Number of edges:", graph.number_of_edges())
 
-    # graph = dgl.DGLGraph(g_nx, readonly=True)
     features = torch.FloatTensor(features)
     labels = torch.LongTensor(labels)
     years = torch.LongTensor(years)
@@ -278,12 +284,19 @@ def main(args):
         # When initial epochs are 0, no pretraining is needed either
         # For current experiments, we have set initial_epochs = 0
         # Exclusively the static model of experiment 1 uses this pretraining
-        subg, subg_features, subg_labels, subg_years, train_nid, test_nid = prepare_data_for_year(graph, features, labels, years, args.pretrain_until, 10000,
-                                                                                                  exclude_class=exclude_class, device=device)
+        data = prepare_data_for_year(graph,
+                                     features,
+                                     labels,
+                                     years,
+                                     args.pretrain_until,
+                                     10000,
+                                     exclude_class=exclude_class,
+                                     device=device,
+                                     backend=backend)
+        subg, subg_features, subg_labels, subg_years, train_nid, test_nid = data
         # Use all nodes of initial subgraph for training
         print("Using data until", args.pretrain_until, "for training")
         print("Selecting", subg.number_of_nodes(), "of", graph.number_of_nodes(), "papers for initial training.")
-
 
         train_nids = torch.cat([train_nid, test_nid])  # use all nodes in subg for initial pre-training
         if use_sampling:
@@ -406,15 +419,21 @@ def main(args):
                               compute_loss=False)
         else:
             if epochs > 0:
-                train(model, optimizer, subg, subg_features, subg_labels, mask=train_nid, epochs=epochs,
+                train(model,
+                      optimizer,
+                      subg,
+                      subg_features,
+                      subg_labels,
+                      mask=train_nid,
+                      epochs=epochs,
                       weights=weights)
 
             acc, _ = evaluate(model,
-                                subg,
-                                subg_features,
-                                subg_labels,
-                                mask=test_nid,
-                                compute_loss=False)
+                              subg,
+                              subg_features,
+                              subg_labels,
+                              mask=test_nid,
+                              compute_loss=False)
         print(f"[{current_year} ~ Epoch {epochs}] Test Accuracy: {acc:.4f}")
         results_df = attach_score(results_df, current_year, epochs, acc)
         # input() # debug purposes

@@ -11,23 +11,31 @@ import torch
 from joblib import Memory
 from sklearn.feature_extraction.text import TfidfVectorizer
 from tqdm import tqdm
+import torch_geometric as tg
 
 # Globals
 CACHE_DIR = '/tmp/70companies'
 MEMORY = Memory(CACHE_DIR, verbose=2)
 
-def load_data(path):
-    try:
-        print("Trying to load dgl graph directly")
-        glist, __ = load_graphs(osp.join(path, 'g.bin'))
-        g = glist[0]
-        print("Success")
-    except DGLError as e:
-        print("File not found", e)
-        print("Loading nx graph")
+def load_data(path, backend='dgl'):
+    if backend == 'dgl':
+        try:
+            print("Trying to load dgl graph directly")
+            glist, __ = load_graphs(osp.join(path, 'g.bin'))
+            g = glist[0]
+            print("Success")
+        except DGLError as e:
+            print("File not found", e)
+            print("Loading nx graph")
+            nx_graph = nx.read_adjlist(osp.join(path, 'adjlist.txt'), nodetype=int)
+            print("Type:", type(nx_graph))
+            g = DGLGraph.from_networkx(nx_graph)
+    elif backend == 'geometric':
         nx_graph = nx.read_adjlist(osp.join(path, 'adjlist.txt'), nodetype=int)
         print("Type:", type(nx_graph))
-        g = DGLGraph.from_networkx(nx_graph)
+        g = tg.utils.from_networkx(nx_graph)
+    else:
+        raise ValueError("Unknown backend: " + backend)
     X = np.load(osp.join(path, 'X.npy'))
     y = np.load(osp.join(path, 'y.npy'))
     t = np.load(osp.join(path, 't.npy'))
