@@ -53,11 +53,18 @@ def compute_weights(ts, exponential_decay, initial_quantity=1.0, normalize=True)
     return values
 
 
-def train(model, optimizer, g, feats, labels, mask=None, epochs=1, weights=None):
+def train(model, optimizer, g, feats, labels, mask=None, epochs=1, weights=None,
+          backend='dgl'):
     model.train()
     reduction = 'none' if weights is not None else 'mean'
     for epoch in range(epochs):
-        logits = model(g, feats)
+        if backend == 'dgl':
+            logits = model(g, feats)
+        elif backend == 'geometric':
+            logits = model(feats, g)
+        else:
+            raise ValueError("Unknown backend: " + backend)
+
         if mask is not None:
             loss = F.cross_entropy(logits[mask], labels[mask], reduction=reduction)
         else:
@@ -133,6 +140,9 @@ def build_model(args, in_feats, n_hidden, n_classes, device, n_layers=1):
         assert n_hidden_per_head * heads[0] == n_hidden, f"{n_hidden} not divisible by {heads[0]}"
         model = GAT(1, in_feats, n_hidden_per_head, n_classes,
                     heads, F.elu, 0.6, 0.6, 0.2, False).to(device)
+    elif args.model == 'gunet':
+        model = tg.nn.GraphUNet(in_feats, n_hidden, n_classes, n_layers,
+                                pool_ratios=0.5, sum_res=True, act=F.relu).to(device)
     else:
         raise NotImplementedError("Model not implemented")
 
@@ -142,7 +152,7 @@ def prepare_data_for_year(graph, features, labels, years, current_year, history,
                           device=None, backend='dgl'):
     print("Preparing data for year", current_year)
     # Prepare subgraph
-    subg_nodes = torch.arange(graph.number_of_nodes())[(years <= current_year) & (years >= (current_year - history))]
+    subg_nodes = torch.arange(features.size(0))[(years <= current_year) & (years >= (current_year - history))]
 
     subg_num_nodes = subg_nodes.size(0)
 
@@ -150,7 +160,7 @@ def prepare_data_for_year(graph, features, labels, years, current_year, history,
         subg = graph.subgraph(subg_nodes)
         subg.set_n_initializer(dgl.init.zero_initializer)
     elif backend == 'geometric':
-        subg = tg.utils.subgraph(subg_nodes, graph, relabel_nodes=True)
+        subg, __edge_attr = tg.utils.subgraph(subg_nodes, graph, relabel_nodes=True)
     else:
         raise ValueError("Unkown backend: " + backend)
 
@@ -169,6 +179,8 @@ def prepare_data_for_year(graph, features, labels, years, current_year, history,
     print("[{}] #Training: {}".format(current_year, train_nid.size(0)))
     print("[{}] #Test    : {}".format(current_year, test_nid.size(0)))
     if device is not None:
+        if backend == 'geometric':
+            subg = subg.to(device)
         subg_features = subg_features.to(device)
         subg_labels = subg_labels.to(device)
     return subg, subg_features, subg_labels, subg_years, train_nid, test_nid
@@ -211,11 +223,13 @@ def main(args):
 
 
     graph, features, labels, years = load_data(args.data_path, backend=backend)
+    num_nodes = features.shape[0]
+    num_edges = graph.number_of_edges() if backend == 'dgl' else graph.size(1)
 
     print("Min year:", years.min())
     print("Max year:", years.max())
-    print("Number of nodes:", graph.number_of_nodes())
-    print("Number of edges:", graph.number_of_edges())
+    print("Number of nodes:", num_nodes)
+    print("Number of edges:", num_edges)
 
     features = torch.FloatTensor(features)
     labels = torch.LongTensor(labels)
@@ -311,7 +325,7 @@ def main(args):
             print("Subg labels", subg_labels.size())
             train(model, optimizer, subg, subg_features, subg_labels,
                   mask=train_nid,
-                  epochs=args.initial_epochs)
+                  epochs=args.initial_epochs, backend=backend)
             acc, _ = evaluate(model, subg, subg_features, subg_labels, mask=None)
             print(f"** Train Accuracy {acc:.4f} **")
 
@@ -323,11 +337,19 @@ def main(args):
     for t, current_year in enumerate(remaining_years.numpy()):
         torch.cuda.empty_cache() # no memory leaks
         # Get the current subgraph
-        subg, subg_features, subg_labels, subg_years, train_nid, test_nid = prepare_data_for_year(graph, features, labels, years, current_year, args.history,
-                                                                                                  exclude_class=exclude_class, device=device)
+        data = prepare_data_for_year(graph,
+                                     features,
+                                     labels,
+                                     years,
+                                     current_year,
+                                     args.history,
+                                     exclude_class=exclude_class,
+                                     device=device,
+                                     backend=backend)
+        subg, subg_features, subg_labels, subg_years, train_nid, test_nid = data
 
         if args.decay is not None:
-            # Use decay factor to weight the loss function, based on time steps t
+            # Use decay factor to weight the loss function based on time steps t
             if use_sampling:
                 raise NotImplementedError("Decay can only be used without sampling")
             weights = compute_weights(years[train_nid], args.decay, normalize=True).to(device)
@@ -428,7 +450,8 @@ def main(args):
                       subg_labels,
                       mask=train_nid,
                       epochs=epochs,
-                      weights=weights)
+                      weights=weights,
+                      backend=backend)
 
             acc, _ = evaluate(model,
                               subg,
@@ -457,7 +480,7 @@ DATASET_PATHS = {
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', type=str, help="Specify model", default='gs-mean',
-                        choices=['mlp','gs-mean','gcn_cv_sc', 'mostfrequent', 'egcn', 'gat'])
+                        choices=['mlp','gs-mean','gcn_cv_sc', 'mostfrequent', 'egcn', 'gat', 'gunet'])
     parser.add_argument('--variant', type=str, default='',
                         help="Some comment on the model variant, useful to distinguish within results file")
     parser.add_argument('--dataset', type=str, help="Specify the dataset", choices=list(DATASET_PATHS.keys()),

@@ -33,13 +33,13 @@ def load_data(path, backend='dgl'):
     elif backend == 'geometric':
         nx_graph = nx.read_adjlist(osp.join(path, 'adjlist.txt'), nodetype=int)
         print("Type:", type(nx_graph))
-        g = tg.utils.from_networkx(nx_graph)
+        g = tg.utils.from_networkx(nx_graph).edge_index
     else:
         raise ValueError("Unknown backend: " + backend)
+    N = g.number_of_nodes() if backend == 'dgl' else g.max() + 1
     X = np.load(osp.join(path, 'X.npy'))
     y = np.load(osp.join(path, 'y.npy'))
     t = np.load(osp.join(path, 't.npy'))
-    N = g.number_of_nodes()
     assert X.shape[0] == N
     assert y.size == N
     assert t.size == N
