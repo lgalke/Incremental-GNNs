@@ -144,6 +144,8 @@ def prepare_data_for_year(graph, features, labels, years, current_year, history,
     # Prepare subgraph
     subg_nodes = torch.arange(graph.number_of_nodes())[(years <= current_year) & (years >= (current_year - history))]
 
+    subg_num_nodes = subg_nodes.size(0)
+
     if backend == 'dgl':
         subg = graph.subgraph(subg_nodes)
         subg.set_n_initializer(dgl.init.zero_initializer)
@@ -157,8 +159,8 @@ def prepare_data_for_year(graph, features, labels, years, current_year, history,
     subg_years = years[subg_nodes]
 
     # Prepare masks wrt *subgraph*
-    train_nid = torch.arange(subg.number_of_nodes())[subg_years < current_year]
-    test_nid = torch.arange(subg.number_of_nodes())[subg_years == current_year]
+    train_nid = torch.arange(subg_num_nodes)[subg_years < current_year]
+    test_nid = torch.arange(subg_num_nodes)[subg_years == current_year]
 
     if exclude_class is not None:
         train_nid = train_nid[subg_labels[train_nid] != exclude_class]
@@ -296,7 +298,7 @@ def main(args):
         subg, subg_features, subg_labels, subg_years, train_nid, test_nid = data
         # Use all nodes of initial subgraph for training
         print("Using data until", args.pretrain_until, "for training")
-        print("Selecting", subg.number_of_nodes(), "of", graph.number_of_nodes(), "papers for initial training.")
+        print("Selecting", subg_features.size(0), "of", features.size(0), "papers for initial training.")
 
         train_nids = torch.cat([train_nid, test_nid])  # use all nodes in subg for initial pre-training
         if use_sampling:
