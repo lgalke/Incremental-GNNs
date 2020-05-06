@@ -118,13 +118,13 @@ def build_model(args, in_feats, n_hidden, n_classes, device, n_layers=1):
                     n_layers, F.relu, args.dropout).to(device)
     elif args.model == 'mostfrequent':
         model = MostFrequentClass()
-    elif args.model == 'egcn':
-        if n_layers != 2:
-            print("Warning, EGCN doesn't respect n_layers")
-        egcn_args = egcn_utils.Namespace({'feats_per_node': in_feats,
-                                          'layer_1_feats': n_hidden,
-                                          'layer_2_feats': n_classes})
-        model = EGCN(egcn_args, torch.nn.RReLU(), device=device, skipfeats=False)
+    # elif args.model == 'egcn':
+    #     if n_layers != 2:
+    #         print("Warning, EGCN doesn't respect n_layers")
+    #     egcn_args = egcn_utils.Namespace({'feats_per_node': in_feats,
+    #                                       'layer_1_feats': n_hidden,
+    #                                       'layer_2_feats': n_classes})
+    #     model = EGCN(egcn_args, torch.nn.RReLU(), device=device, skipfeats=False)
     elif args.model == 'gat':
         print("Warning, GAT doesn't respect n_layers")
         heads = [8, args.gat_out_heads]  # Fixed head config
@@ -379,6 +379,9 @@ if __name__ == '__main__':
                         help="Some comment on the model variant, useful to distinguish within results file")
     parser.add_argument('--dataset', type=str, help="Specify the dataset", choices=list(DATASET_PATHS.keys()),
                         default='pharmabio')
+    parser.add_argument('--t_start', type=int,
+                        help="The first evaluation time step. Default is 2004 for DBLP-{easy,hard} and 1999 for PharmaBio")
+
     parser.add_argument('--n_layers', type=int,
                         help="Number of layers/hops", default=2)
     parser.add_argument('--n_hidden', type=int,
@@ -389,14 +392,14 @@ if __name__ == '__main__':
                         help="Weight decay", default=0.0)
     parser.add_argument('--dropout', type=float,
                         help="Dropout probability", default=0.5)
-    parser.add_argument('--t_start', type=int,
-                        help="The first evaluation time step. Default is 2004 for DBLP-{easy,hard} and 1999 for PharmaBio")
+
     parser.add_argument('--initial_epochs', type=int,
                         help="Train this many initial epochs", default=0)
     parser.add_argument('--annual_epochs', type=int,
                         help="Train this many epochs per year", default=200)
     parser.add_argument('--history', type=int,
                         help="How many years of data to keep in history", default=100)
+
     parser.add_argument('--gat_out_heads',
                         help="How many output heads to use for GATs", default=1, type=int)
     parser.add_argument('--rescale_lr', type=float,
