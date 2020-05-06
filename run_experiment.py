@@ -190,7 +190,6 @@ RESULT_COLS = ['dataset',
 def main(args):
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
-    dataset = '70companies'
     use_sampling = args.model in ['gcn_cv_sc']
 
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
@@ -240,7 +239,7 @@ def main(args):
         """ Partial """
         return df.append(
             pd.DataFrame(
-                [[osp.basename(osp.normpath(args.data_path)),  # dataset
+                [[args.dataset,
                   args.seed,
                   args.model,
                   args.variant,
@@ -264,7 +263,7 @@ def main(args):
                 columns=RESULT_COLS),
             ignore_index=True)
 
-    if dataset == 'elliptic':
+    if args.dataset == 'elliptic':
         exclude_class = 0   # <-- this is the UNK class in the dataset
     else:
         exclude_class = None
