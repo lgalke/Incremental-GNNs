@@ -17,6 +17,7 @@ from models import GraphSAGE
 from models import GAT
 from models import MLP
 from models import MostFrequentClass
+from models import Ours
 
 # # EvolveGCN
 # from models.evolvegcn.egcn_o import EGCN
@@ -58,12 +59,8 @@ def train(model, optimizer, g, feats, labels, mask=None, epochs=1, weights=None,
     model.train()
     reduction = 'none' if weights is not None else 'mean'
     for epoch in range(epochs):
-        if backend == 'dgl':
-            logits = model(g, feats)
-        elif backend == 'geometric':
-            logits = model(feats, g)
-        else:
-            raise ValueError("Unknown backend: " + backend)
+        inputs = (g, feats) if backend == 'dgl' else (feats, g)
+        logits = model(*inputs)
 
         if mask is not None:
             loss = F.cross_entropy(logits[mask], labels[mask], reduction=reduction)
@@ -80,10 +77,12 @@ def train(model, optimizer, g, feats, labels, mask=None, epochs=1, weights=None,
         print("Epoch {:d} | Loss: {:.4f}".format(epoch+1, loss.detach().item()))
 
 
-def evaluate(model, g, feats, labels, mask=None, compute_loss=True):
+def evaluate(model, g, feats, labels, mask=None, compute_loss=True,
+             backend='dgl'):
     model.eval()
     with torch.no_grad():
-        logits = model(g, feats)
+        inputs = (g, feats) if backend == 'dgl' else (feats, g)
+        logits = model(*inputs)
 
         if mask is not None:
             logits = logits[mask]
@@ -143,6 +142,10 @@ def build_model(args, in_feats, n_hidden, n_classes, device, n_layers=1):
     elif args.model == 'gunet':
         model = tg.nn.GraphUNet(in_feats, n_hidden, n_classes, n_layers,
                                 pool_ratios=0.5, sum_res=True, act=F.relu).to(device)
+    elif args.model == 'ours':
+        model = Ours(in_feats, n_hidden, n_classes,
+                     depth=n_layers, pool_ratios=0.5, act=F.relu,
+                     sum_res=True, augmentation=False).to(device)
     else:
         raise NotImplementedError("Model not implemented")
 
@@ -160,7 +163,8 @@ def prepare_data_for_year(graph, features, labels, years, current_year, history,
         subg = graph.subgraph(subg_nodes)
         subg.set_n_initializer(dgl.init.zero_initializer)
     elif backend == 'geometric':
-        subg, __edge_attr = tg.utils.subgraph(subg_nodes, graph, relabel_nodes=True)
+        subg, __edge_attr = tg.utils.subgraph(subg_nodes,
+                                              graph, relabel_nodes=True)
     else:
         raise ValueError("Unkown backend: " + backend)
 
@@ -213,7 +217,7 @@ def main(args):
     dataset = '70companies'
     use_sampling = args.model in ['gcn_cv_sc']
     has_parameters = args.model not in ['most_frequent']
-    backend = 'geometric' if args.model in ['gunet'] else 'dgl'
+    backend = 'geometric' if args.model in ['gunet', 'ours'] else 'dgl'
 
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
@@ -326,7 +330,8 @@ def main(args):
             train(model, optimizer, subg, subg_features, subg_labels,
                   mask=train_nid,
                   epochs=args.initial_epochs, backend=backend)
-            acc, _ = evaluate(model, subg, subg_features, subg_labels, mask=None)
+            acc, _ = evaluate(model, subg, subg_features, subg_labels, mask=None,
+                              backend=backend)
             print(f"** Train Accuracy {acc:.4f} **")
 
         known_classes |= set(subg_labels.cpu().numpy())
@@ -458,7 +463,8 @@ def main(args):
                               subg_features,
                               subg_labels,
                               mask=test_nid,
-                              compute_loss=False)
+                              compute_loss=False,
+                              backend=backend)
         print(f"[{current_year} ~ Epoch {epochs}] Test Accuracy: {acc:.4f}")
         results_df = attach_score(results_df, current_year, epochs, acc)
         # input() # debug purposes
@@ -480,7 +486,7 @@ DATASET_PATHS = {
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', type=str, help="Specify model", default='gs-mean',
-                        choices=['mlp','gs-mean','gcn_cv_sc', 'mostfrequent', 'egcn', 'gat', 'gunet'])
+                        choices=['mlp','gs-mean','gcn_cv_sc', 'mostfrequent', 'egcn', 'gat', 'gunet', 'ours'])
     parser.add_argument('--variant', type=str, default='',
                         help="Some comment on the model variant, useful to distinguish within results file")
     parser.add_argument('--dataset', type=str, help="Specify the dataset", choices=list(DATASET_PATHS.keys()),

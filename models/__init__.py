@@ -9,3 +9,5 @@ from .gin import GIN
 
 # Sampling
 from .gcn_cv_sc import GCNSampling
+
+from .ours import Ours
