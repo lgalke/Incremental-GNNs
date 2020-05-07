@@ -35,7 +35,9 @@ class Ours(nn.Module):
             self.pools.append(SAGPooling(channels,
                                          ratio=self.pool_ratios[i],
                                          min_score=None, multiplier=1,
-                                         nonlinearity=torch.tanh))
+                                         nonlinearity=torch.tanh,
+                                         GNN=tg.nn.conv.GCNConv,
+                                         improved=True))
             self.down_convs.append(GCNConv(channels, channels, improved=True))
         # sum or concat mode
         in_channels = channels if sum_res else 2 * channels
@@ -71,9 +73,13 @@ class Ours(nn.Module):
 
         for i in range(1, self.depth + 1):
             if self.augmentation:
-                edge_index, edge_weight = self.augment_adj(edge_index,
-                                                           edge_weight,
+                # print("x[%d]"%i, x.size())
+                # print("Ei[%d]"%i, edge_index.size())
+                # print("Ew[%d]"%i, edge_weight.size())
+                edge_index, edge_weight = self.augment_adj(edge_index.cpu(),
+                                                           edge_weight.cpu(),
                                                            x.size(0))
+                edge_index, edge_weight = edge_index.cuda(), edge_weight.cuda()
             x, edge_index, edge_weight, batch, perm, _ = self.pools[i - 1](
                 x, edge_index, edge_weight, batch)
 
@@ -102,7 +108,6 @@ class Ours(nn.Module):
             x = self.act(x) if i < self.depth - 1 else x
 
         return x
-
 
     def augment_adj(self, edge_index, edge_weight, num_nodes):
         edge_index, edge_weight = add_self_loops(edge_index, edge_weight,

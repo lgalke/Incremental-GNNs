@@ -139,9 +139,6 @@ def build_model(args, in_feats, n_hidden, n_classes, device, n_layers=1):
         assert n_hidden_per_head * heads[0] == n_hidden, f"{n_hidden} not divisible by {heads[0]}"
         model = GAT(1, in_feats, n_hidden_per_head, n_classes,
                     heads, F.elu, 0.6, 0.6, 0.2, False).to(device)
-    elif args.model == 'gunet':
-        model = tg.nn.GraphUNet(in_feats, n_hidden, n_classes, n_layers,
-                                pool_ratios=0.5, sum_res=True, act=F.relu).to(device)
     elif args.model == 'ours':
         model = Ours(in_feats, n_hidden, n_classes,
                      depth=n_layers, pool_ratios=0.5, act=F.relu,
@@ -216,7 +213,7 @@ def main(args):
     np.random.seed(args.seed)
     use_sampling = args.model in ['gcn_cv_sc']
     has_parameters = args.model not in ['most_frequent']
-    backend = 'geometric' if args.model in ['gunet', 'ours'] else 'dgl'
+    backend = 'geometric' if args.model in ['ours'] else 'dgl'
 
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
@@ -485,7 +482,7 @@ DATASET_PATHS = {
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', type=str, help="Specify model", default='gs-mean',
-                        choices=['mlp','gs-mean','gcn_cv_sc', 'mostfrequent', 'egcn', 'gat', 'gunet', 'ours'])
+                        choices=['mlp','gs-mean','gcn_cv_sc', 'mostfrequent', 'egcn', 'gat', 'ours'])
     parser.add_argument('--variant', type=str, default='',
                         help="Some comment on the model variant, useful to distinguish within results file")
     parser.add_argument('--dataset', type=str, help="Specify the dataset", choices=list(DATASET_PATHS.keys()),
