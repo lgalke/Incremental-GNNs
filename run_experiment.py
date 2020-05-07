@@ -214,7 +214,6 @@ RESULT_COLS = ['dataset',
 def main(args):
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
-    dataset = '70companies'
     use_sampling = args.model in ['gcn_cv_sc']
     has_parameters = args.model not in ['most_frequent']
     backend = 'geometric' if args.model in ['gunet', 'ours'] else 'dgl'
@@ -267,7 +266,7 @@ def main(args):
         """ Partial """
         return df.append(
             pd.DataFrame(
-                [[osp.basename(osp.normpath(args.data_path)),  # dataset
+                [[args.dataset,
                   args.seed,
                   args.model,
                   args.variant,
@@ -291,13 +290,16 @@ def main(args):
                 columns=RESULT_COLS),
             ignore_index=True)
 
-    if dataset == 'elliptic':
+    if args.dataset == 'elliptic':
         exclude_class = 0   # <-- this is the UNK class in the dataset
     else:
         exclude_class = None
 
+<<<<<<< HEAD
     known_classes = set()
 
+=======
+>>>>>>> master
     if not args.limited_pretraining and not args.start == 'cold' and args.initial_epochs > 0:
         # With 'limited pretraining' we do the initial epochs on the first wnidow
         # With cold start, no pretraining is needed
@@ -491,6 +493,9 @@ if __name__ == '__main__':
                         help="Some comment on the model variant, useful to distinguish within results file")
     parser.add_argument('--dataset', type=str, help="Specify the dataset", choices=list(DATASET_PATHS.keys()),
                         default='pharmabio')
+    parser.add_argument('--t_start', type=int,
+                        help="The first evaluation time step. Default is 2004 for DBLP-{easy,hard} and 1999 for PharmaBio")
+
     parser.add_argument('--n_layers', type=int,
                         help="Number of layers/hops", default=2)
     parser.add_argument('--n_hidden', type=int,
@@ -501,14 +506,14 @@ if __name__ == '__main__':
                         help="Weight decay", default=0.0)
     parser.add_argument('--dropout', type=float,
                         help="Dropout probability", default=0.5)
-    parser.add_argument('--t_start', type=int,
-                        help="The first evaluation time step. Default is 2004 for DBLP-{easy,hard} and 1999 for PharmaBio")
+
     parser.add_argument('--initial_epochs', type=int,
                         help="Train this many initial epochs", default=0)
     parser.add_argument('--annual_epochs', type=int,
                         help="Train this many epochs per year", default=200)
     parser.add_argument('--history', type=int,
                         help="How many years of data to keep in history", default=100)
+
     parser.add_argument('--gat_out_heads',
                         help="How many output heads to use for GATs", default=1, type=int)
     parser.add_argument('--rescale_lr', type=float,
