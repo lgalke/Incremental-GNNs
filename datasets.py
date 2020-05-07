@@ -37,8 +37,6 @@ def load_data(path):
     assert t.size == N
     return g, X, y, t
 
-
-
 def load_70companies_dataframe(path, limit=None):
     """ Loads the 70companies dataset """
     df = pd.read_csv(path, nrows=limit)

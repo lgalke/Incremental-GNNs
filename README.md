@@ -14,7 +14,7 @@ Paper: under review at ECML 2020
 
 ## Get the datasets
 
-The three datasets of our paper are available [on zenodo](https://zenodo.org/deposit/3764770).
+The three datasets of our paper are available [on zenodo](https://zenodo.org/record/3764770).
 Download the zip files and extract them into the `data` subdirectory, such that the structure looks exactly like this:
 
 - `data/dblp-easy`
