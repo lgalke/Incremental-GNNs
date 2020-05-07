@@ -65,7 +65,7 @@ class GCNSampling(nn.Module):
         # output layer
         self.layers.append(NodeUpdate(n_layers, 2*n_hidden, n_classes, dropout))
 
-    def forward(self, nf):
+    def forward(self, nf):  # pytorch: model.__call__( ) --> model.forward()
         h = nf.layers[0].data['preprocess']
         if self.dropout:
             h = self.dropout(h)
@@ -138,13 +138,13 @@ class GCNInfer(nn.Module):
 
 
 def prepare_graph(g, features, n_layers, n_hidden):
-    """ 
+    """
     Arguments
     - graph: DGLGraph
     - features: torch.FloatTensor
 
     Prepares the (sub-)graph for usage in gcn_cv_sc
-    * Computes norm ndataa['norm']
+    * Computes norm ndata['norm']
     * Populates history variables with zeros ndata['h_i']
     * Performs first aggretgation step ndata['preprocess']
     """
@@ -181,6 +181,17 @@ def train(model, optimizer, loss_fcn, num_neighbors, g, train_nid, labels, epoch
                                                        num_workers=num_workers,
                                                        num_hops=n_layers,
                                                        seed_nodes=train_nid):
+            # Train set: v4, v7, v8
+            # batch_size = 1
+            # 1) v4
+            # 2) v7
+            # 3) v8
+
+            # l1 | l2 | l3
+            # ------------
+            # v1 \
+            #      v3 - *v4*
+            # v2 /
             for i in range(n_layers):
                 agg_history_str = 'agg_h_{}'.format(i)
                 g.pull(nf.layer_parent_nid(i+1).long(), fn.copy_src(src='h_{}'.format(i), out='m'),
