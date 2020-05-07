@@ -145,7 +145,7 @@ def build_model(args, in_feats, n_hidden, n_classes, device, n_layers=1):
     elif args.model == 'ours':
         model = Ours(in_feats, n_hidden, n_classes,
                      depth=n_layers, pool_ratios=0.5, act=F.relu,
-                     sum_res=True, augmentation=False).to(device)
+                     sum_res=True, augmentation=True).to(device)
     else:
         raise NotImplementedError("Model not implemented")
 
@@ -295,11 +295,8 @@ def main(args):
     else:
         exclude_class = None
 
-<<<<<<< HEAD
     known_classes = set()
 
-=======
->>>>>>> master
     if not args.limited_pretraining and not args.start == 'cold' and args.initial_epochs > 0:
         # With 'limited pretraining' we do the initial epochs on the first wnidow
         # With cold start, no pretraining is needed
