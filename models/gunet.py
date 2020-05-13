@@ -1,7 +1,7 @@
+from torch_sparse import spspmm
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch_sparse import spspmm
 import torch_geometric as tg
 from torch_geometric.nn.pool import SAGPooling
 from torch_geometric.nn.conv import GCNConv
@@ -11,11 +11,11 @@ from torch_geometric.utils import (add_self_loops, sort_edge_index,
 
 """ Graph U-Net architecture with SAGPooling instead of TopKPooling """
 
-class Ours(nn.Module):
+class SAGPoolGUNet(nn.Module):
     def __init__(self, in_channels, hidden_channels, out_channels,
                  depth=1, pool_ratios=0.5, act=F.relu, sum_res=True,
                  augmentation=False):
-        super(Ours, self).__init__()
+        super(SAGPoolGUNet, self).__init__()
         assert depth >= 1
         self.in_channels = in_channels
         self.hidden_channels = hidden_channels
@@ -76,10 +76,14 @@ class Ours(nn.Module):
                 # print("x[%d]"%i, x.size())
                 # print("Ei[%d]"%i, edge_index.size())
                 # print("Ew[%d]"%i, edge_weight.size())
+                edge_index_device = edge_index.device
+                edge_weight_device = edge_weight.device
                 edge_index, edge_weight = self.augment_adj(edge_index.cpu(),
                                                            edge_weight.cpu(),
                                                            x.size(0))
-                edge_index, edge_weight = edge_index.cuda(), edge_weight.cuda()
+                edge_index = edge_index.to(edge_index_device)
+                edge_weight = edge_weight.to(edge_weight_device)
+
             x, edge_index, edge_weight, batch, perm, _ = self.pools[i - 1](
                 x, edge_index, edge_weight, batch)
 
