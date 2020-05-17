@@ -269,11 +269,7 @@ def main(args):
     else:
         exclude_class = None
 
-<<<<<<< HEAD
     known_classes = set()
-
-=======
->>>>>>> master
     if not args.limited_pretraining and not args.start == 'cold' and args.initial_epochs > 0:
         # With 'limited pretraining' we do the initial epochs on the first wnidow
         # With cold start, no pretraining is needed
