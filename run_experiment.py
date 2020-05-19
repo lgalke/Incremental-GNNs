@@ -2,14 +2,13 @@
 # -*- coding: utf-8 -*-
 import argparse
 import os
-import os.path as osp
 
 import numpy as np
 import pandas as pd
 import dgl
 import torch_geometric as tg
 import torch
-import torch.nn as nn
+# import torch.nn as nn
 import torch.nn.functional as F
 
 # Models
@@ -18,6 +17,10 @@ from models import GAT
 from models import MLP
 from models import MostFrequentClass
 from models import SAGPoolGUNet
+from models import MinCUT
+
+from models.mincut import train_mincut, evaluate_mincut
+
 
 # # EvolveGCN
 # from models.evolvegcn.egcn_o import EGCN
@@ -143,6 +146,12 @@ def build_model(args, in_feats, n_hidden, n_classes, device, n_layers=1):
         model = SAGPoolGUNet(in_feats, n_hidden, n_classes,
                              depth=n_layers, pool_ratios=0.5, act=F.relu,
                              sum_res=True, augmentation=True).to(device)
+    elif args.model == 'mincut':
+        model = MinCUT(in_feats, n_hidden, n_classes,
+                       pool_size=args.mc_pool_size,
+                       activation=F.relu,
+                       smoothing=args.mc_pool_smoothing,
+                       dropout=args.dropout)
     else:
         raise NotImplementedError("Model not implemented")
 
@@ -213,7 +222,7 @@ def main(args):
     np.random.seed(args.seed)
     use_sampling = args.model in ['gcn_cv_sc']
     has_parameters = args.model not in ['most_frequent']
-    backend = 'geometric' if args.model in ['gunet'] else 'dgl'
+    backend = 'geometric' if args.model in ['gunet', 'mincut'] else 'dgl'
 
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
@@ -245,7 +254,8 @@ def main(args):
     n_layers = args.n_layers
     n_hidden = args.n_hidden
 
-    model = build_model(args, in_feats, n_hidden, n_classes, device, n_layers=args.n_layers)
+    model = build_model(args, in_feats, n_hidden, n_classes, device,
+                        n_layers=args.n_layers)
     if args.model == 'gcn_cv_sc':
         # unzip training and inference models
         model, infer_model = model
@@ -294,6 +304,8 @@ def main(args):
 
     known_classes = set()
 
+    mincut_state = None
+
     if not args.limited_pretraining and not args.start == 'cold' and args.initial_epochs > 0:
         # With 'limited pretraining' we do the initial epochs on the first wnidow
         # With cold start, no pretraining is needed
@@ -321,6 +333,18 @@ def main(args):
                   batch_size=args.batch_size, num_workers=args.num_workers)
         elif args.model == 'mostfrequent':
             model.fit(None, subg_labels)
+        elif args.model == 'mincut':
+            mincut_state = train_mincut(model, optimizer, subg, subg_features,
+                                        labels, mask=None,
+                                        epochs=args.initial_epochs,
+                                        state=None,
+                                        alpha_mc=args.mc_pool_alpha_mc,
+                                        alpha_o=args.mc_pool_alpha_o)
+            acc, _ = evaluate_mincut(model,
+                                     subg,
+                                     subg_features,
+                                     subg_labels,
+                                     mask=None, state=None)
         else:
             print("Subg labels", subg_labels.size())
             train(model, optimizer, subg, subg_features, subg_labels,
@@ -442,6 +466,19 @@ def main(args):
                               subg_labels,
                               mask=test_nid,
                               compute_loss=False)
+        elif args.model == 'mincut':
+            new_state = train_mincut(model, optimizer, subg, subg_features,
+                                     labels, mask=train_nid,
+                                     epochs=epochs,
+                                     state=mincut_state,
+                                     alpha_mc=args.mc_pool_alpha_mc,
+                                     alpha_o=args.mc_pool_alpha_o)
+            acc, _ = evaluate_mincut(model,
+                                     subg,
+                                     subg_features,
+                                     subg_labels,
+                                     mask=None, state=mincut_state)
+            mincut_state = new_state
         else:
             if epochs > 0:
                 train(model,
@@ -529,6 +566,10 @@ if __name__ == '__main__':
     parser.add_argument('--save_intermediate', default=False, action="store_true", help="Save intermediate results per year")
     parser.add_argument('--save', default=None, help="Save results to this file")
     parser.add_argument('--start', default='legacy-warm', choices=['cold', 'warm', 'hybrid', 'legacy-cold','legacy-warm'], help="Cold retrain from scratch or use warm start.")
+    parser.add_argument("--mc_pool_size", default=None, type=int)
+    parser.add_argument("--mc_pool_smoothing", default=0.9, type=float)
+    parser.add_argument("--mc_pool_alpha_mc", default=1., type=float)
+    parser.add_argument("--mc_pool_alpha_o", default=1., type=float)
 
     ARGS = parser.parse_args()
 

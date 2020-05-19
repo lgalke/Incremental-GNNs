@@ -13,3 +13,4 @@ from .gcn_cv_sc import GCNSampling
 # Extensions
 
 from .gunet import SAGPoolGUNet
+from .mincut import MinCUT
