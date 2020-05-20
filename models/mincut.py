@@ -53,8 +53,6 @@ def evaluate_mincut(model, g, feats, labels, mask=None, compute_loss=True,
         else:
             loss = None
 
-        if isinstance(logits, np.ndarray):
-            logits = torch.FloatTensor(logits)
         __max_vals, max_indices = torch.max(logits.detach(), 1)
         acc = (max_indices == labels).sum().float() / labels.size(0)
 
@@ -118,3 +116,10 @@ class MinCUT(nn.Module):
     def final_parameters(self):
         yield self.layers.fc.weight
         yield self.layers.fc.bias
+
+    def __repr__(self):
+        return '{}({}, {}, {})'.format(self.__class__.__name__,
+                                       self.in_channels,
+                                       self.hidden_channels,
+                                       self.out_channels)
+
