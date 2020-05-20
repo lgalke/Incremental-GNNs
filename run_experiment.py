@@ -335,7 +335,7 @@ def main(args):
             model.fit(None, subg_labels)
         elif args.model == 'mincut':
             mincut_state = train_mincut(model, optimizer, subg, subg_features,
-                                        labels, mask=None,
+                                        subg_labels, mask=None,
                                         epochs=args.initial_epochs,
                                         state=None,
                                         alpha_mc=args.mc_pool_alpha_mc,
@@ -452,7 +452,7 @@ def main(args):
             acc = evaluate_sampling(infer_model,
                                     subg,
                                     test_nid,
-                                    labels,
+                                    subg_labels,
                                     batch_size=args.test_batch_size,
                                     num_workers=args.num_workers)
         elif args.model == 'mostfrequent':
@@ -468,7 +468,7 @@ def main(args):
                               compute_loss=False)
         elif args.model == 'mincut':
             new_state = train_mincut(model, optimizer, subg, subg_features,
-                                     labels, mask=train_nid,
+                                     subg_labels, mask=train_nid,
                                      epochs=epochs,
                                      state=mincut_state,
                                      alpha_mc=args.mc_pool_alpha_mc,
@@ -519,7 +519,8 @@ DATASET_PATHS = {
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', type=str, help="Specify model", default='gs-mean',
-                        choices=['mlp','gs-mean','gcn_cv_sc', 'mostfrequent', 'egcn', 'gat', 'gunet'])
+                        choices=['mlp','gs-mean','gcn_cv_sc', 'mostfrequent',
+                                 'egcn', 'gat', 'gunet', 'mincut'])
     parser.add_argument('--variant', type=str, default='',
                         help="Some comment on the model variant, useful to distinguish within results file")
     parser.add_argument('--dataset', type=str, help="Specify the dataset", choices=list(DATASET_PATHS.keys()),
@@ -566,7 +567,7 @@ if __name__ == '__main__':
     parser.add_argument('--save_intermediate', default=False, action="store_true", help="Save intermediate results per year")
     parser.add_argument('--save', default=None, help="Save results to this file")
     parser.add_argument('--start', default='legacy-warm', choices=['cold', 'warm', 'hybrid', 'legacy-cold','legacy-warm'], help="Cold retrain from scratch or use warm start.")
-    parser.add_argument("--mc_pool_size", default=None, type=int)
+    parser.add_argument("--mc_pool_size", default=1000, type=int)
     parser.add_argument("--mc_pool_smoothing", default=0.9, type=float)
     parser.add_argument("--mc_pool_alpha_mc", default=1., type=float)
     parser.add_argument("--mc_pool_alpha_o", default=1., type=float)
