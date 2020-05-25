@@ -121,8 +121,9 @@ class MinCUT(nn.Module):
         self.output_layer.reset_parameters()
 
     def final_parameters(self):
-        yield self.layers.fc.weight
-        yield self.layers.fc.bias
+        yield self.output_layer.weight
+        yield self.output_layer.lin.weight
+        yield self.output_layer.lin.bias
 
     # def __repr__(self):
     #     return '{}({}, {}, {})'.format(self.__class__.__name__,
