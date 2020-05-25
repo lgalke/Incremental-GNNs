@@ -3,9 +3,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from torch_geometric.nn.dense import dense_mincut_pool, DenseGCNConv
-from torch_geometric.nn.conv import GCNConv
+from torch_geometric.nn.dense import dense_mincut_pool, DenseGraphConv
+from torch_geometric.nn.conv import GraphConv
 from torch_geometric.utils import to_dense_adj
+
+DEBUG = False
 
 
 def train_mincut(model, optimizer, g, feats, labels, mask=None,
@@ -13,7 +15,7 @@ def train_mincut(model, optimizer, g, feats, labels, mask=None,
                  alpha_o=1.):
     model.train()
     for epoch in range(epochs):
-        logits, state, mc_loss, o_loss = model(feats, g)
+        logits, mc_loss, o_loss = model(feats, g)
         if mask is not None:
             clf_loss = F.cross_entropy(logits[mask], labels[mask],
                                        reduction='mean')
@@ -25,9 +27,7 @@ def train_mincut(model, optimizer, g, feats, labels, mask=None,
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        print("""
-Epoch {:d} | Loss: {:.4f} | CLF Loss: {:.4f} | MC Loss: {:.4f} | O Loss: {:.4f}
-              """.format(
+        print("""Epoch {:d} | Loss: {:.4f} | CLF Loss: {:.4f} | MC Loss: {:.4f} | O Loss: {:.4f}""".format(
             epoch+1, loss.detach().item(),
             clf_loss.detach().item(),
             mc_loss.detach().item(),
@@ -43,7 +43,7 @@ def evaluate_mincut(model, g, feats, labels, mask=None, compute_loss=True,
                     state=None):
     model.eval()
     with torch.no_grad():
-        logits, __state, __mc_loss, __o_loss = model(feats, g)
+        logits, __mc_loss, __o_loss = model(feats, g)
 
         if mask is not None:
             logits = logits[mask]
@@ -72,16 +72,14 @@ class MinCUT(nn.Module):
         self.out_channels = out_channels
         self.pool_size = pool_size
         self.activation = activation
-        self.convs = torch.nn.ModuleList()
         self.smoothing = smoothing
 
         channels = hidden_channels
 
-        self.input_layer = GCNConv(in_channels, channels, improved=True)
+        self.input_layer = GraphConv(in_channels, channels, aggr='add')
         self.mlp = nn.Sequential(nn.Linear(channels, channels),
                                  nn.ReLU(), nn.Linear(channels, pool_size))
-        self.output_layer = DenseGCNConv(channels, out_channels,
-                                         improved=True)
+        self.output_layer = DenseGraphConv(channels, out_channels, aggr='add')
 
         self.dropout = nn.Dropout(dropout) if dropout else None
 
@@ -92,20 +90,22 @@ class MinCUT(nn.Module):
         s = self.mlp(x)
         # Do pool
         a = to_dense_adj(edge_index)
-        print("Pre-pool x:", x.size())
-        print("Pre-pool a:", a.size())
+        if DEBUG:
+            print("Pre-pool x:", x.size())
+            print("Pre-pool a:", a.size())
         x_pool, a_pool, mc_loss, o_loss = dense_mincut_pool(x, a, s, mask=mask)
         return x_pool, a_pool, s, mc_loss, o_loss
 
     def decode(self, x_pool, a_pool, s):
         # Unpool
         x_unpool = s @ x_pool
-        print("Pool x:", x_pool.size())
-        print("Pool a:", a_pool.size())
         a_unpool = s @ a_pool @ s.T
         y = self.output_layer(x_unpool, a_unpool)
-        print("Unpool x:", x_unpool.size())
-        print("Unpool a:", a_unpool.size())
+        if DEBUG:
+            print("Pool x:", x_pool.size())
+            print("Pool a:", a_pool.size())
+            print("Unpool x:", x_unpool.size())
+            print("Unpool a:", a_unpool.size())
         return y.squeeze(0)
 
     def forward(self, x, edge_index, state=None, mask=None):
@@ -115,7 +115,7 @@ class MinCUT(nn.Module):
         if state is not None:
             x_pool = state * (1 - self.smoothing) + x_pool * self.smoothing
         y = self.decode(x_pool, a_pool, s)
-        return y, x_pool, mc_loss, o_loss
+        return y, mc_loss, o_loss
 
     def reset_final_parameters(self):
         self.output_layer.reset_parameters()

@@ -151,7 +151,7 @@ def build_model(args, in_feats, n_hidden, n_classes, device, n_layers=1):
                        pool_size=args.mc_pool_size,
                        activation=F.relu,
                        smoothing=args.mc_pool_smoothing,
-                       dropout=args.dropout)
+                       dropout=args.dropout).to(device)
     else:
         raise NotImplementedError("Model not implemented")
 
