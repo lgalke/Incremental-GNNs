@@ -15,6 +15,7 @@ def train_mincut(model, optimizer, g, feats, labels, mask=None,
                  alpha_o=1.):
     model.train()
     for epoch in range(epochs):
+        optimizer.zero_grad()
         logits, mc_loss, o_loss = model(feats, g)
         if mask is not None:
             clf_loss = F.cross_entropy(logits[mask], labels[mask],
@@ -24,7 +25,6 @@ def train_mincut(model, optimizer, g, feats, labels, mask=None,
                                        reduction='mean')
 
         loss = clf_loss + alpha_mc * mc_loss + alpha_o * o_loss
-        optimizer.zero_grad()
         loss.backward()
         optimizer.step()
         print("""Epoch {:d} | Loss: {:.4f} | CLF Loss: {:.4f} | MC Loss: {:.4f} | O Loss: {:.4f}""".format(
