@@ -1,0 +1,1 @@
+python3 visualize.py --style "window size %RF" --hue model --col dataset --row start --nosharey --save results-ecml2020-final/exp2.png results-ecml2020-final/exp2-pharmabio-1999.csv results-ecml2020-final/exp2-dblp-easy-2004.csv results-ecml2020-final/exp2-dblp-hard-2004.csv
