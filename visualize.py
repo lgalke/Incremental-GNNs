@@ -47,7 +47,7 @@ for path in args.data[1:]:
 
 data['retrain'] = data.annual_epochs.map(bool)
 data['window size %RF'] = data.history.map({1: '25%', 3: '50%', 4: '50%', 6: '75%', 8: '75%', 21: '100%', 25: '100%'})
-data.dataset = data.dataset.map({'7dc': 'pharmabio', 'dblp-graph': 'dblp-easy', 'dblp-graph-hard': 'dblp-hard'})
+# data.dataset = data.dataset.map({'7dc': 'pharmabio', 'dblp-graph': 'dblp-easy', 'dblp-graph-hard': 'dblp-hard'})
 
 theplot = sns.relplot(x='year',
                       y='accuracy',
