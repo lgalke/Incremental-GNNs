@@ -426,9 +426,9 @@ def main(args):
 
 
 DATASET_PATHS = {
-    'dblp-easy': 'data/dblp-easy/',
-    'dblp-hard': 'data/dblp-hard/',
-    'pharmabio': 'data/pharmabio/'
+    'dblp-easy': os.path.join('data', 'dblp-easy'),
+    'dblp-hard': os.path.join('data', 'dblp-hard'),
+    'pharmabio': os.path.join('data', 'pharmabio')
 }
 
 if __name__ == '__main__':
