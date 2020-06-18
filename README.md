@@ -1,6 +1,6 @@
 # Incremental Training of Graph Neural Networks
 
-Paper: under review at ECML 2020
+Paper: *coming soon*
 
 
 ## Installation
