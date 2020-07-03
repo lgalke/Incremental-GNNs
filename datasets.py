@@ -31,6 +31,7 @@ def load_data(path, backend='dgl'):
             print("Type:", type(nx_graph))
             g = DGLGraph.from_networkx(nx_graph)
     elif backend == 'geometric':
+        raise NotImplementedError("Geometric conversion does not work properly")
         nx_graph = nx.read_adjlist(osp.join(path, 'adjlist.txt'), nodetype=int)
         print("Type:", type(nx_graph))
         g = tg.utils.from_networkx(nx_graph).edge_index
