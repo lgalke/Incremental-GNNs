@@ -21,7 +21,7 @@ for path in args.results_csv_file[1:]:
 import numpy as np
 print(df.dtypes)
 df.rename(columns={'history': 'window'}, inplace=True)
-df.dataset = df.dataset.map({'7dc': 'pharmabio', 'dblp-graph': 'dblp-easy', 'dblp-graph-hard': 'dblp-hard'})
+# df.dataset = df.dataset.map({'7dc': 'pharmabio', 'dblp-graph': 'dblp-easy', 'dblp-graph-hard': 'dblp-hard'})
 inf_value = 'inf'
 df.window = df.window.map(lambda c: inf_value if c >= 20 else str(c))
 # df = df[df.start == 'warm']
