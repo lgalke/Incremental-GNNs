@@ -375,6 +375,7 @@ def main(args):
                                          weight_decay=args.weight_decay * args.rescale_wd)
         if use_sampling:
             if epochs > 0:
+                prepare_graph(subg, subg_features, n_layers, n_hidden)
                 train_sampling(model,
                                optimizer,
                                F.cross_entropy,
@@ -388,7 +389,7 @@ def main(args):
             acc = evaluate_sampling(infer_model,
                                     subg,
                                     test_nid,
-                                    labels,
+                                    subg_labels,
                                     batch_size=args.test_batch_size,
                                     num_workers=args.num_workers)
         elif args.model == 'mostfrequent':
