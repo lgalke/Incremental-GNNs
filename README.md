@@ -1,6 +1,7 @@
 # Incremental Training of Graph Neural Networks
 
-Paper: *coming soon*
+
+**Deprecation:** Please use https://github.com/lgalke/lifelong-learning instead!
 
 
 ## Installation
